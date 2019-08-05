@@ -9,7 +9,6 @@ using System.IO.Ports;
 namespace controller
 {
 
-
     public  class DC
     {
 
@@ -44,7 +43,6 @@ namespace controller
             serialPort1.Write(bytes, 0, bytes.Length);
         }
 
-
         public  void set_V(double V) // команда для задания уровня напряжения питания
         {
             double V_real = V / 2 + 0.0;
@@ -64,7 +62,6 @@ namespace controller
             bytes = Encoding.ASCII.GetBytes(s);
             serialPort1.Write(bytes, 0, bytes.Length);
         }
-
 
     public  string meas_V() // команда для измерение  напряжения питания
         {
@@ -90,6 +87,5 @@ namespace controller
             Console.Write(indata);
         }
     }
-
 
 }

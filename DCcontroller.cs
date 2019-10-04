@@ -63,7 +63,7 @@ namespace controller
             serialPort1.Write(bytes, 0, bytes.Length);
         }
 
-    public  string meas_V() // команда для измерение  напряжения питания
+    public  string meas_V() // команда для измерения  напряжения питания
         {
             byte[] bytes = Encoding.ASCII.GetBytes("MEAS:VOLT?" + Environment.NewLine);
             serialPort1.Write(bytes, 0, bytes.Length);

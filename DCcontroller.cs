@@ -1,91 +1,156 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Linq;
+/*
+Library for software control of the Agilent E3648A Power Supply via RS-232 (COM port).
+This library provides methods to initialize the connection, configure settings, 
+control outputs, set voltage levels, and measure output parameters (voltage and current) 
+using SCPI commands.
+*/
+
+using System;
+using System.IO.Ports;
 using System.Text;
 using System.Threading;
-using System.IO.Ports;
 
 namespace controller
 {
-
-    public  class DC
+    public class DC
     {
+        public SerialPort serialPort1 = new SerialPort(); 
 
-        public  SerialPort serialPort1 = new SerialPort(); 
-        
-        public  void com_controller(int n) // Инициализация COM-порта для корректной работы с  
-        {                                 // блоком питания Agilent E3648A. RTS, DTR = Вкл. !!!
-            if (!serialPort1.IsOpen)
+        // Initializes the COM port for correct operation with the Agilent E3648A power supply. RTS and DTR = ON!
+        public void com_controller(int n)
+        {
+            try
             {
-                serialPort1.PortName = "COM" + n.ToString();
-                serialPort1.Open();
-                serialPort1.RtsEnable = true;
-                serialPort1.DtrEnable = true;
-                serialPort1.BaudRate = 9600;
+                if (!serialPort1.IsOpen)
+                {
+                    serialPort1.PortName = "COM" + n.ToString();
+                    serialPort1.BaudRate = 9600;
+                    serialPort1.RtsEnable = true;
+                    serialPort1.DtrEnable = true;
+                    serialPort1.Open();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initializing COM port: {ex.Message}");
             }
         }
 
-        public  void com_off(int n) // закрытие COM-порта
+        // Closes the COM port
+        public void com_off()
         {
-            serialPort1.Close();
+            try
+            {
+                if (serialPort1.IsOpen)
+                {
+                    serialPort1.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error closing COM port: {ex.Message}");
+            }
         }
 
-        public  void dc_on() // команда для включения блока питания
+        // Command to turn on the power supply
+        public void dc_on()
         {
-            byte[] bytes = Encoding.ASCII.GetBytes("OUTP ON\n");
-            serialPort1.Write(bytes, 0, bytes.Length);
+            try
+            {
+                byte[] bytes = Encoding.ASCII.GetBytes("OUTP ON\n");
+                serialPort1.Write(bytes, 0, bytes.Length);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending ON command: {ex.Message}");
+            }
         }
 
-        public  void dc_off() // команда для включения блока питания
+        // Command to turn off the power supply
+        public void dc_off()
         {
-            byte[] bytes = Encoding.ASCII.GetBytes("OUTP OFF\n");
-            serialPort1.Write(bytes, 0, bytes.Length);
+            try
+            {
+                byte[] bytes = Encoding.ASCII.GetBytes("OUTP OFF\n");
+                serialPort1.Write(bytes, 0, bytes.Length);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending OFF command: {ex.Message}");
+            }
         }
 
-        public  void set_V(double V) // команда для задания уровня напряжения питания
+        // Command to set the power supply voltage level
+        public void set_V(double V)
         {
-            double V_real = V / 2 + 0.0;
-            string V_string = V_real.ToString("F1");
-            String[] substrings = V_string.Split(',');
-            V_string = substrings[0] + '.' + substrings[1];
-            string s = "VOLT " + V_string + " \n";
-            byte[] bytes = Encoding.ASCII.GetBytes("INST:SEL OUT1" + "\n");
-            serialPort1.Write(bytes, 0, bytes.Length);
-            Thread.Sleep(500); // задержка в 500 мс
-            bytes = Encoding.ASCII.GetBytes(s);
-            serialPort1.Write(bytes, 0, bytes.Length);
-            Thread.Sleep(500);
-            bytes = Encoding.ASCII.GetBytes("INST:SEL OUT2" + "\n");
-            serialPort1.Write(bytes, 0, bytes.Length);
-            Thread.Sleep(500);
-            bytes = Encoding.ASCII.GetBytes(s);
-            serialPort1.Write(bytes, 0, bytes.Length);
+            try
+            {
+                double V_real = V / 2;
+                string V_string = V_real.ToString("F1").Replace(",", ".");
+                string command = "VOLT " + V_string + " \n";
+
+                // Set voltage for output channel 1
+                serialPort1.Write(Encoding.ASCII.GetBytes("INST:SEL OUT1\n"), 0, command.Length);
+                Thread.Sleep(500); // Delay for device to process
+                serialPort1.Write(Encoding.ASCII.GetBytes(command), 0, command.Length);
+
+                // Set voltage for output channel 2
+                serialPort1.Write(Encoding.ASCII.GetBytes("INST:SEL OUT2\n"), 0, command.Length);
+                Thread.Sleep(500);
+                serialPort1.Write(Encoding.ASCII.GetBytes(command), 0, command.Length);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error setting voltage: {ex.Message}");
+            }
         }
 
-    public  string meas_V() // команда для измерения  напряжения питания
+        // Command to measure the output voltage
+        public string meas_V()
         {
-            byte[] bytes = Encoding.ASCII.GetBytes("MEAS:VOLT?" + Environment.NewLine);
-            serialPort1.Write(bytes, 0, bytes.Length);
-            string data = serialPort1.ReadExisting().ToString();
-            return data;
+            try
+            {
+                byte[] bytes = Encoding.ASCII.GetBytes("MEAS:VOLT?\n");
+                serialPort1.Write(bytes, 0, bytes.Length);
+                return serialPort1.ReadExisting();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error measuring voltage: {ex.Message}");
+                return string.Empty;
+            }
         }
 
-        public  string meas_I() // команда для измерения  тока потребления
+        // Command to measure the output current
+        public string meas_I()
         {
-            byte[] bytes = Encoding.ASCII.GetBytes("MEAS:CURR?" + Environment.NewLine);
-            serialPort1.Write(bytes, 0, bytes.Length);
-            string data = serialPort1.ReadExisting().ToString();
-            return data;
+            try
+            {
+                byte[] bytes = Encoding.ASCII.GetBytes("MEAS:CURR?\n");
+                serialPort1.Write(bytes, 0, bytes.Length);
+                return serialPort1.ReadExisting();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error measuring current: {ex.Message}");
+                return string.Empty;
+            }
         }
 
-        private  void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
+        // Handler for incoming serial data
+        private void DataReceivedHandler(object sender, SerialDataReceivedEventArgs e)
         {
-            SerialPort sp = (SerialPort)sender;
-            string indata = sp.ReadExisting();
-            Console.WriteLine("Data Received:");
-            Console.Write(indata);
+            try
+            {
+                SerialPort sp = (SerialPort)sender;
+                string indata = sp.ReadExisting();
+                Console.WriteLine("Data Received:");
+                Console.WriteLine(indata);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error handling received data: {ex.Message}");
+            }
         }
     }
-
 }
